@@ -1,6 +1,7 @@
 :root { font-family: 'Segoe UI', 'Microsoft YaHei UI', sans-serif; color: #303b36; background: #faf9f6; font-synthesis: none; }
 * { box-sizing: border-box; }
 body { margin: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+#app { height: 100vh; display: flex; flex-direction: column; }
 button { font: inherit; cursor: pointer; transition: background .15s, opacity .15s; }
 button:focus-visible, main:focus-visible { outline: 2px solid #537962; outline-offset: -3px; }
 button:disabled { opacity: .4; cursor: default; }

@@ -182,20 +182,27 @@ new ResizeObserver(() => {
   });
 }).observe(viewport);
 
-window.reader.onClose(() => {
+window.reader?.onClose(() => {
   void save().finally(() => window.reader.closeReady());
 });
 setInterval(() => { void save().catch(() => showError('阅读进度暂时无法保存，请稍后重试。')); }, 2000);
 
 async function initialize() {
+  if (!window.reader) return;
   try {
     const initial = await window.reader.initialize();
+    element('startup-help').hidden = true;
+    element('app').hidden = false;
     state = { ...initial.state, file: null };
     updateFont();
     if (initial.result.book) displayBook(initial.result.book, initial.state.anchor);
     if (initial.result.error || initial.warning) showError(initial.result.error || initial.warning!);
     ready = true;
     document.body.dataset.ready = 'true';
-  } catch { showError('无法初始化阅读器，请重新启动。'); }
+  } catch {
+    element('app').hidden = true;
+    element('startup-help').hidden = false;
+    element('startup-help').setAttribute('role', 'alert');
+  }
 }
 void initialize();

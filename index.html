@@ -7,6 +7,13 @@
     <title>ZRead</title>
   </head>
   <body>
+    <section id="startup-help" role="status" style="max-width:640px;margin:80px auto;padding:28px;font:16px/1.9 'Microsoft YaHei',sans-serif;color:#303b36;background:#faf9f6;border:1px solid #dce1d7;border-radius:12px;">
+      <h2 style="margin:0 0 16px;font-size:24px;">ZRead · 桌面阅读器</h2>
+      <p>请从项目文件夹双击 <strong>Start-ZRead.cmd</strong> 启动阅读器。</p>
+      <p>也可以打开 <strong>release / ZRead-win32-x64 / ZRead.exe</strong>。</p>
+      <p style="color:#717b70;">直接在浏览器中打开此 HTML 文件无法启动阅读器。若此提示出现在桌面应用内，请关闭后重试；开发运行可使用 npm start。</p>
+    </section>
+    <div id="app" hidden>
     <header class="toolbar">
       <div class="brand" aria-label="ZRead">Z<span>Read</span><span class="brand-dot">.</span></div>
       <div class="divider"></div>
@@ -33,6 +40,7 @@
       <article id="content" aria-label="书籍正文" hidden></article>
     </main>
     <footer><span id="reading-state">简单一点，专心阅读。</span><span id="progress">TXT READER · ZREAD</span></footer>
+    </div>
     <script type="module" src="/src/renderer.ts"></script>
   </body>
 </html>

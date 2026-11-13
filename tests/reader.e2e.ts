@@ -49,6 +49,8 @@ test.afterEach(async () => {
 });
 
 test('first launch, GBK, safe text rendering, failed opens and cancellation', async () => {
+  await expect(page.locator('#startup-help')).toBeHidden();
+  await expect(page.locator('#app')).toBeVisible();
   await expect(page.locator('#welcome')).toBeVisible();
   await expect(page.locator('#content')).toBeHidden();
   await page.screenshot({ path: 'test-results/welcome.png' });
@@ -72,6 +74,22 @@ test('first launch, GBK, safe text rendering, failed opens and cancellation', as
   await expect(page.locator('#content')).toContainText('继续阅读');
   expect(fs.readFileSync(file).equals(source)).toBe(true);
   await page.screenshot({ path: 'test-results/reading.png' });
+});
+
+test('HTML opened without the desktop bridge shows startup help instead of inactive controls', async () => {
+  // BrowserWindow without preload reproduces opening HTML in a regular browser.
+  for (const file of ['index.html', 'dist/index.html']) {
+    const newWindow = app.waitForEvent('window');
+    await app.evaluate(async ({ BrowserWindow }, filePath) => {
+      const browser = new BrowserWindow({ show: false, webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true } });
+      await browser.loadFile(filePath);
+    }, path.resolve(file));
+    const browserPage = await newWindow;
+    await expect(browserPage.locator('#startup-help')).toBeVisible();
+    await expect(browserPage.locator('#startup-help')).toContainText('Start-ZRead.cmd');
+    await expect(browserPage.locator('#open')).toBeHidden();
+    await browserPage.close();
+  }
 });
 
 test('text position survives font changes, resize, autosave and restart', async () => {

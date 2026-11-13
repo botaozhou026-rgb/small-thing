@@ -19,7 +19,12 @@ $shell = New-Object -ComObject WScript.Shell
 $shortcut = $shell.CreateShortcut($shortcutPath)
 $shortcut.TargetPath = $executable
 $shortcut.WorkingDirectory = Split-Path -Parent $executable
-$shortcut.IconLocation = "$executable,0"
+$desktopIcon = Join-Path $projectRoot 'assets\electron-default.ico'
+$shortcut.IconLocation = if (Test-Path -LiteralPath $desktopIcon -PathType Leaf) {
+    "$desktopIcon,0"
+} else {
+    "$executable,0"
+}
 $shortcut.Description = 'ZRead - TXT Reader'
 $shortcut.WindowStyle = 1
 $shortcut.Save()

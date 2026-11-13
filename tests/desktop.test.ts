@@ -23,7 +23,7 @@ test('Windows icon contains valid PNG images for all desktop and taskbar sizes',
   });
 });
 
-test('Windows shortcut uses the executable icon and replaces a previous custom icon', { skip: process.platform !== 'win32' }, () => {
+test('Windows shortcut replaces a cached custom icon with the original Electron icon', { skip: process.platform !== 'win32' }, () => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'zread-shortcut-'));
   try {
     // Shortcut construction can be tested without building or launching the application.
@@ -47,6 +47,6 @@ test('Windows shortcut uses the executable icon and replaces a previous custom i
     assert.equal(canonical(properties.TargetPath), canonical(executable));
     assert.equal(canonical(properties.WorkingDirectory), canonical(path.dirname(executable)));
     assert.ok(properties.IconLocation.endsWith(',0'));
-    assert.equal(canonical(properties.IconLocation.slice(0, -2)), canonical(executable));
+    assert.equal(canonical(properties.IconLocation.slice(0, -2)), canonical(path.resolve('assets/electron-default.ico')));
   } finally { fs.rmSync(directory, { recursive: true, force: true }); }
 });

@@ -10,11 +10,13 @@ let mayClose = false;
 let closing = false;
 
 app.whenReady().then(() => {
+  app.setAppUserModelId('local.zread.reader');
   session = new ReaderSession(path.join(app.getPath('userData'), 'reading-state.json'));
   Menu.setApplicationMenu(null);
   window = new BrowserWindow({
     width: 1100, height: 800, minWidth: 620, minHeight: 440,
     title: 'ZRead', backgroundColor: '#faf9f6',
+    icon: path.join(__dirname, '../assets/zread.ico'),
     webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true,
       nodeIntegration: false, sandbox: true },
   });

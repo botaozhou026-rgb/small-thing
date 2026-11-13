@@ -23,4 +23,17 @@ $shortcut.IconLocation = "$executable,0"
 $shortcut.Description = 'ZRead - TXT Reader'
 $shortcut.WindowStyle = 1
 $shortcut.Save()
+# Refresh only this executable and shortcut after replacing a packaged icon.
+if (-not ('ZReadShellNotify' -as [type])) {
+    Add-Type @'
+using System;
+using System.Runtime.InteropServices;
+public static class ZReadShellNotify {
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
+    public static extern void SHChangeNotify(uint change, uint flags, string path, IntPtr unused);
+}
+'@
+}
+[ZReadShellNotify]::SHChangeNotify(0x2000, 0x0005, $executable, [IntPtr]::Zero)
+[ZReadShellNotify]::SHChangeNotify(0x2000, 0x0005, $shortcutPath, [IntPtr]::Zero)
 Write-Output "Created shortcut: $shortcutPath"

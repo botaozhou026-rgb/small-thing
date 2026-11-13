@@ -16,7 +16,6 @@ app.whenReady().then(() => {
   window = new BrowserWindow({
     width: 1100, height: 800, minWidth: 620, minHeight: 440,
     title: 'ZRead', backgroundColor: '#faf9f6',
-    icon: path.join(__dirname, '../assets/zread.ico'),
     webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true,
       nodeIntegration: false, sandbox: true },
   });

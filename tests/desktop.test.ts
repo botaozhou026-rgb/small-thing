@@ -23,16 +23,20 @@ test('Windows icon contains valid PNG images for all desktop and taskbar sizes',
   });
 });
 
-test('Windows shortcut targets the packaged reader with its own icon', { skip: process.platform !== 'win32' }, () => {
+test('Windows shortcut uses the executable icon and replaces a previous custom icon', { skip: process.platform !== 'win32' }, () => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'zread-shortcut-'));
   try {
     // Shortcut construction can be tested without building or launching the application.
     const executable = path.join(directory, 'reader.exe');
     fs.writeFileSync(executable, 'MZ');
+    const shortcut = path.join(directory, 'ZRead.lnk');
+    const seed = spawnSync('powershell.exe', ['-NoProfile', '-Command',
+      '$s=(New-Object -ComObject WScript.Shell).CreateShortcut($env:ZREAD_SHORTCUT_TEST); $s.TargetPath=$env:ZREAD_TARGET_TEST; $s.IconLocation="$env:SystemRoot\\system32\\shell32.dll,0"; $s.Save()'],
+    { encoding: 'utf8', windowsHide: true, env: { ...process.env, ZREAD_SHORTCUT_TEST: shortcut, ZREAD_TARGET_TEST: executable } });
+    assert.equal(seed.status, 0, seed.stderr);
     const result = spawnSync('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File',
       'scripts/create-shortcut.ps1', '-ShortcutDirectory', directory, '-ExecutablePath', executable], { encoding: 'utf8', windowsHide: true });
     assert.equal(result.status, 0, result.stderr);
-    const shortcut = path.join(directory, 'ZRead.lnk');
     assert.ok(fs.statSync(shortcut).size > 0);
     const inspect = spawnSync('powershell.exe', ['-NoProfile', '-Command',
       '$s=(New-Object -ComObject WScript.Shell).CreateShortcut($env:ZREAD_SHORTCUT_TEST); $s | Select-Object TargetPath,WorkingDirectory,IconLocation | ConvertTo-Json -Compress'],

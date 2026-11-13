@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ws://localhost:*" />
+    <title>ZRead</title>
+  </head>
+  <body>
+    <header class="toolbar">
+      <div class="brand" aria-label="ZRead">Z<span>Read</span><span class="brand-dot">.</span></div>
+      <div class="divider"></div>
+      <span id="filename" class="filename">你的片刻阅读时光</span>
+      <div class="actions">
+        <div class="font-control" aria-label="字号调整">
+          <button id="smaller" aria-label="缩小字号" title="缩小字号">A−</button>
+          <output id="font-size" aria-live="polite">20</output>
+          <button id="larger" aria-label="放大字号" title="放大字号">A＋</button>
+        </div>
+        <button class="primary" id="open">＋ 打开 TXT</button>
+      </div>
+    </header>
+    <div id="notice" class="notice" role="alert" hidden><span id="notice-text"></span><button id="dismiss" aria-label="关闭提示">×</button></div>
+    <main id="viewport" tabindex="0" aria-label="阅读区域">
+      <section id="welcome" class="welcome">
+        <div class="book-symbol" aria-hidden="true">文</div>
+        <p class="eyebrow">A LITTLE TIME TO READ</p>
+        <h1>打开一本书，<br />留一点时间给自己。</h1>
+        <p class="intro">从一份 TXT 开始，安静地读下去。<br />下次回来，仍是你读到的地方。</p>
+        <button id="welcome-open" class="primary welcome-button">打开本地 TXT 文件 <span aria-hidden="true">↗</span></button>
+        <p class="hint">UTF-8 / GBK 文本 · 本地阅读 · 自动记忆进度</p>
+      </section>
+      <article id="content" aria-label="书籍正文" hidden></article>
+    </main>
+    <footer><span id="reading-state">简单一点，专心阅读。</span><span id="progress">TXT READER · ZREAD</span></footer>
+    <script type="module" src="/src/renderer.ts"></script>
+  </body>
+</html>

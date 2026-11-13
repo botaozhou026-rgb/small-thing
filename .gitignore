@@ -1,4 +1,13 @@
 # Byte-compiled / optimized / DLL files
+node_modules/
+.test-build/
+dist/
+dist-electron/
+release/
+.npm-cache/
+.electron-cache/
+test-results/
+playwright-report/
 __pycache__/
 *.py[cod]
 *$py.class

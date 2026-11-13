@@ -76,3 +76,72 @@ test('file failures preserve the active book and atomic state roundtrips', () =>
     assert.ok(corrupted.warning);
   } finally { fs.rmSync(directory, { recursive: true, force: true }); }
 });
+
+test('recent books retain independent positions, deduplicate and stay removed after autosave', () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'zread-history-'));
+  try {
+    const first = path.join(directory, 'first.txt');
+    const second = path.join(directory, 'second.txt');
+    const stateFile = path.join(directory, 'state.json');
+    fs.writeFileSync(first, '甲书正文。'.repeat(200));
+    fs.writeFileSync(second, '乙书正文。'.repeat(200));
+    let session = new ReaderSession(stateFile);
+    session.open(first);
+    session.save({ file: first, fontSize: 22, anchor: { offset: 300, inset: -3 }, progress: 30 });
+    session.open(second);
+    session.save({ file: second, fontSize: 22, anchor: { offset: 600, inset: -5 }, progress: 60 });
+    session = new ReaderSession(stateFile);
+    assert.deepEqual(session.history.map((entry) => entry.file), [second, first]);
+    session.open(first);
+    assert.deepEqual(session.state.anchor, { offset: 300, inset: -3 });
+    assert.equal(session.history.length, 2);
+    assert.equal(session.history[0].file, first);
+    session.remove(first);
+    session.save({ file: first, fontSize: 22, anchor: { offset: 350, inset: 0 }, progress: 35 });
+    session = new ReaderSession(stateFile);
+    assert.equal(session.state.file, null);
+    assert.deepEqual(session.history.map((entry) => entry.file), [second]);
+    assert.equal(session.history[0].anchor.offset, 600);
+    session.remove(second);
+    assert.deepEqual(new ReaderSession(stateFile).history, []);
+    assert.equal(fs.readFileSync(first, 'utf8'), '甲书正文。'.repeat(200));
+    assert.equal(fs.readFileSync(second, 'utf8'), '乙书正文。'.repeat(200));
+    session.open(first);
+    assert.equal(session.state.anchor.offset, 0);
+  } finally { fs.rmSync(directory, { recursive: true, force: true }); }
+});
+
+test('legacy single-book state migrates and missing files remain removable', () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'zread-migration-'));
+  try {
+    const missing = path.join(directory, 'missing.txt');
+    const stateFile = path.join(directory, 'state.json');
+    fs.writeFileSync(stateFile, JSON.stringify({ file: missing, fontSize: 24, anchor: { offset: 100, inset: -2 } }));
+    const session = new ReaderSession(stateFile);
+    assert.equal(session.history.length, 1);
+    assert.equal(session.history[0].anchor.offset, 100);
+    assert.throws(() => session.open(missing));
+    assert.equal(session.history.length, 1);
+    session.remove(missing);
+    assert.equal(new ReaderSession(stateFile).history.length, 0);
+    assert.equal(new ReaderSession(stateFile).state.fontSize, 24);
+    assert.equal(new ReaderSession(stateFile).state.file, null);
+  } finally { fs.rmSync(directory, { recursive: true, force: true }); }
+});
+
+test('failed history deletion preserves the in-memory reading record', () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'zread-history-error-'));
+  try {
+    const file = path.join(directory, 'book.txt');
+    const stateFile = path.join(directory, 'state.json');
+    fs.writeFileSync(file, '阅读正文');
+    const session = new ReaderSession(stateFile);
+    session.open(file);
+    session.save(session.state);
+    fs.unlinkSync(stateFile);
+    fs.mkdirSync(stateFile);
+    assert.throws(() => session.remove(file));
+    assert.equal(session.history[0].file, file);
+    assert.equal(session.state.file, file);
+  } finally { fs.rmSync(directory, { recursive: true, force: true }); }
+});

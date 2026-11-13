@@ -24,9 +24,12 @@ app.whenReady().then(() => {
   ipcMain.handle('reader:initialize', (event) => {
     if (!trusted(event)) throw new Error('Unknown sender');
     const state = session.state;
-    if (!state.file) return { state, result: {}, warning: session.warning };
-    try { return { state, result: { book: session.open(state.file) }, warning: session.warning }; }
-    catch (error) { return { state, result: { error: `无法恢复上次阅读：${(error as Error).message}` } }; }
+    if (!state.file) return { state, result: {}, history: session.history, warning: session.warning };
+    try {
+      const book = session.open(state.file);
+      return { state, result: { book }, history: session.history, warning: session.warning };
+    }
+    catch (error) { return { state, history: session.history, result: { error: `无法恢复上次阅读：${(error as Error).message}` } }; }
   });
   ipcMain.handle('reader:open', async (event) => {
     if (!trusted(event)) throw new Error('Unknown sender');
@@ -34,12 +37,31 @@ app.whenReady().then(() => {
       title: '打开 TXT 文件', properties: ['openFile'], filters: [{ name: 'TXT 文本', extensions: ['txt'] }],
     });
     if (result.canceled || !result.filePaths[0]) return { cancelled: true };
-    try { return { book: session.open(result.filePaths[0]) }; }
+    try {
+      const book = session.open(result.filePaths[0]);
+      return { book, anchor: session.state.anchor, history: session.history };
+    }
     catch (error) { return { error: (error as Error).message }; }
+  });
+  ipcMain.handle('reader:open-recent', (event, file: unknown) => {
+    if (!trusted(event)) throw new Error('Unknown sender');
+    if (typeof file !== 'string' || !session.history.some((entry) => entry.file === file)) {
+      return { error: '阅读记录不存在，请重新选择文件。' };
+    }
+    try {
+      const book = session.open(file);
+      return { book, anchor: session.state.anchor, history: session.history };
+    } catch (error) { return { error: (error as Error).message }; }
+  });
+  ipcMain.handle('reader:remove-recent', (event, file: unknown) => {
+    if (!trusted(event)) throw new Error('Unknown sender');
+    if (typeof file !== 'string') return { error: '无效的阅读记录。' };
+    try { session.remove(file); return { history: session.history }; }
+    catch { return { error: '无法删除阅读记录，请检查本地存储权限。' }; }
   });
   ipcMain.handle('reader:save', (event, state: unknown) => {
     if (!trusted(event)) throw new Error('Unknown sender');
-    try { session.save(state); return {}; }
+    try { session.save(state); return { history: session.history }; }
     catch { return { error: '阅读进度暂时无法保存，请检查本地存储空间和权限。' }; }
   });
   ipcMain.on('reader:close-ready', (event) => {

@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import type { Anchor, Book, ReaderState } from './shared';
+import type { Anchor, Book, HistoryEntry, ReaderState } from './shared';
 
 export const DEFAULT_STATE: ReaderState = { file: null, fontSize: 20, anchor: { offset: 0, inset: 0 } };
 
@@ -51,10 +51,29 @@ export function readBook(file: string): Book {
 
 export class ReaderSession {
   state: ReaderState;
+  history: HistoryEntry[] = [];
+  currentLength = 0;
   warning?: string;
   currentFile: string | null = null;
   constructor(readonly stateFile: string) {
-    try { this.state = sanitizeState(JSON.parse(fs.readFileSync(stateFile, 'utf8'))); }
+    try {
+      const stored = JSON.parse(fs.readFileSync(stateFile, 'utf8'));
+      this.state = sanitizeState(stored);
+      const entries = Array.isArray(stored?.history) ? stored.history : [];
+      for (const entry of entries) {
+        const safe = sanitizeState(entry);
+        if (!safe.file || this.history.some((item) => this.sameFile(item.file, safe.file!))) continue;
+        this.history.push({ file: safe.file, name: path.basename(safe.file), anchor: safe.anchor,
+          progress: this.progress(entry?.progress),
+          lastOpened: typeof entry?.lastOpened === 'number' && Number.isFinite(entry.lastOpened) ? entry.lastOpened : 0 });
+      }
+      // Migrate the original single-book state without losing its reading position.
+      if (!Array.isArray(stored?.history) && this.state.file) {
+        this.history.push({ file: this.state.file, name: path.basename(this.state.file),
+          anchor: this.state.anchor, progress: 0, lastOpened: 0 });
+      }
+      this.history.sort((a, b) => b.lastOpened - a.lastOpened);
+    }
     catch (error) {
       this.state = sanitizeState(DEFAULT_STATE);
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') this.warning = '上次的阅读记录无法读取，已使用默认设置。';
@@ -62,16 +81,46 @@ export class ReaderSession {
   }
   open(file: string): Book {
     const book = readBook(file);
+    const previous = this.history.find((entry) => this.sameFile(entry.file, book.path));
+    const anchor = previous?.anchor ?? { offset: 0, inset: 0 };
+    this.history = [{ file: book.path, name: book.name, anchor,
+      progress: previous?.progress ?? 0, lastOpened: Date.now() },
+    ...this.history.filter((entry) => !this.sameFile(entry.file, book.path))];
     this.currentFile = book.path;
+    this.currentLength = book.text.length;
+    this.state = { ...this.state, file: book.path, anchor };
     return book;
+  }
+  private sameFile(a: string, b: string): boolean {
+    return process.platform === 'win32' ? a.toLowerCase() === b.toLowerCase() : a === b;
+  }
+  private progress(value: unknown): number {
+    return typeof value === 'number' && Number.isFinite(value) ? Math.max(0, Math.min(100, value)) : 0;
+  }
+  private write(state: ReaderState, history: HistoryEntry[]): void {
+    const temporary = `${this.stateFile}.tmp`;
+    fs.mkdirSync(path.dirname(this.stateFile), { recursive: true });
+    fs.writeFileSync(temporary, JSON.stringify({ ...state, history }, null, 2), 'utf8');
+    fs.renameSync(temporary, this.stateFile);
+  }
+  remove(file: string): void {
+    const history = this.history.filter((entry) => !this.sameFile(entry.file, file));
+    const state = this.state.file && this.sameFile(this.state.file, file)
+      ? { ...this.state, file: null } : this.state;
+    this.write(state, history);
+    this.state = state;
+    this.history = history;
   }
   save(input: unknown): void {
     const state = sanitizeState(input);
     if (state.file !== this.currentFile) throw new Error('阅读文件已切换，请稍后重试。');
-    const temporary = `${this.stateFile}.tmp`;
-    fs.mkdirSync(path.dirname(this.stateFile), { recursive: true });
-    fs.writeFileSync(temporary, JSON.stringify(state, null, 2), 'utf8');
-    fs.renameSync(temporary, this.stateFile);
-    this.state = state;
+    const record = this.history.find((entry) => state.file && this.sameFile(entry.file, state.file));
+    const history = this.history.map((entry) => entry === record ? { ...entry, anchor: state.anchor,
+      progress: this.progress((input as { progress?: number })?.progress ?? state.anchor.offset / Math.max(1, this.currentLength) * 100) } : entry);
+    // A removed current book remains readable, but autosave must not recreate its record.
+    const stored = { ...state, file: record ? state.file : null };
+    this.write(stored, history);
+    this.state = stored;
+    this.history = history;
   }
 }

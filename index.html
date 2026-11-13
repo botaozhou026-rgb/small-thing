@@ -24,6 +24,7 @@
           <output id="font-size" aria-live="polite">20</output>
           <button id="larger" aria-label="放大字号" title="放大字号">A＋</button>
         </div>
+        <button class="secondary" id="history-open">最近阅读</button>
         <button class="primary" id="open">＋ 打开 TXT</button>
       </div>
     </header>
@@ -40,6 +41,12 @@
       <article id="content" aria-label="书籍正文" hidden></article>
     </main>
     <footer><span id="reading-state">简单一点，专心阅读。</span><span id="progress">TXT READER · ZREAD</span></footer>
+    <dialog id="history-dialog" aria-labelledby="history-title">
+      <div class="history-heading"><h2 id="history-title">最近阅读</h2><button id="history-close" aria-label="关闭最近阅读">×</button></div>
+      <p class="history-description">点击书籍继续阅读。删除记录不会删除原始 TXT 文件。</p>
+      <p id="history-message" role="status"></p>
+      <div id="history-list"></div>
+    </dialog>
     </div>
     <script type="module" src="/src/renderer.ts"></script>
   </body>

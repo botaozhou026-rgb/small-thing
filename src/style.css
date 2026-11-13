@@ -18,6 +18,22 @@ button:disabled { opacity: .4; cursor: default; }
 .font-control output { font-size: 12px; color: #8a8f85; width: 23px; text-align: center; font-variant-numeric: tabular-nums; }
 .primary { border: 1px solid #466b53; color: #fff; background: #466b53; border-radius: 7px; padding: 10px 18px; font-size: 13px; }
 .primary:hover { background: #365840; }
+.secondary { border: 1px solid #dde2d7; background: transparent; color: #466b53; padding: 10px 14px; border-radius: 7px; white-space: nowrap; font-size: 13px; }
+.secondary:hover { background: #eef1e7; }
+dialog { border: 1px solid #dde2d7; border-radius: 14px; padding: 24px; width: min(600px, calc(100vw - 40px)); max-height: 80vh; background: #fffefa; color: #303b36; box-shadow: 0 16px 70px #243b3025; }
+dialog::backdrop { background: #243b3055; }
+.history-heading { display: flex; justify-content: space-between; align-items: center; }
+.history-heading h2 { margin: 0; font-size: 20px; }
+.history-heading button { border: 0; background: none; color: #717b70; font-size: 26px; }
+.history-description, #history-message { color: #798275; font-size: 12px; line-height: 1.8; }
+#history-message:empty { display: none; }
+.history-row { display: flex; gap: 12px; align-items: center; padding: 12px 0; border-top: 1px solid #edf0e7; }
+.history-book { min-width: 0; flex: 1; border: 0; background: transparent; text-align: left; color: #303b36; padding: 6px; border-radius: 6px; }
+.history-book:hover { background: #eef1e7; }
+.history-name, .history-path, .history-meta { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.history-name { font-size: 14px; font-weight: 600; }.history-path { font-size: 11px; color: #92988d; margin: 6px 0; }.history-meta { font-size: 11px; color: #798275; }
+.history-delete { border: 0; background: transparent; color: #9b6155; font-size: 12px; padding: 10px; white-space: nowrap; }
+.history-empty { padding: 28px 0; color: #8a9385; text-align: center; font-size: 14px; }
 .notice { display: flex; align-items: center; justify-content: space-between; background: #fff3de; color: #795625; padding: 10px 32px; font-size: 13px; flex-shrink: 0; }
 .notice button { background: transparent; border: 0; font-size: 22px; color: inherit; }
 main { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; scrollbar-gutter: stable; scroll-behavior: auto; overflow-anchor: none; }

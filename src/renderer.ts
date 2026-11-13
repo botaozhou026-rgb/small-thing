@@ -1,5 +1,5 @@
 import './style.css';
-import type { Anchor, Book, ReaderState } from './shared';
+import type { Anchor, Book, HistoryEntry, ReaderState } from './shared';
 
 const element = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const viewport = element('viewport');
@@ -11,6 +11,8 @@ const progress = element('progress');
 const status = element('reading-state');
 const smaller = element<HTMLButtonElement>('smaller');
 const larger = element<HTMLButtonElement>('larger');
+const historyDialog = element<HTMLDialogElement>('history-dialog');
+let history: HistoryEntry[] = [];
 let state: ReaderState = { file: null, fontSize: 20, anchor: { offset: 0, inset: 0 } };
 let book: Book | undefined;
 let paragraphs: { node: Text; start: number; length: number }[] = [];
@@ -114,26 +116,34 @@ function displayBook(next: Book, anchor: Anchor) {
   reflowing = false;
 }
 
-async function save() {
-  if (!ready || opening) return;
+async function save(force = false) {
+  if (!ready || (opening && !force)) return;
   state.anchor = book ? captureAnchor() : { offset: 0, inset: 0 };
-  const result = await window.reader.save({ ...state, anchor: { ...state.anchor } });
+  const atEnd = book && viewport.scrollTop + viewport.clientHeight >= viewport.scrollHeight - 2;
+  const percent = atEnd ? 100 : state.anchor.offset / Math.max(1, book?.text.length ?? 1) * 100;
+  const result = await window.reader.save({ ...state, anchor: { ...state.anchor }, progress: percent });
+  if (result.history) history = result.history;
   if (result.error) showError(result.error);
 }
 
-async function openBook() {
+async function openBook(file?: string) {
   if (!ready || opening) return;
-  await save();
   opening = true;
   const buttons = [element<HTMLButtonElement>('open'), element<HTMLButtonElement>('welcome-open')];
   buttons.forEach((button) => { button.disabled = true; });
   try {
-    const result = await window.reader.open();
-    if (result.error) showError(result.error);
+    await save(true);
+    const result = file ? await window.reader.openRecent(file) : await window.reader.open();
+    if (result.error) {
+      showError(result.error);
+      element('history-message').textContent = result.error;
+    }
     if (result.book) {
       notice.hidden = true;
-      const anchor = result.book.path === state.file ? captureAnchor() : { offset: 0, inset: 0 };
+      const anchor = result.book.path === state.file ? captureAnchor() : result.anchor ?? { offset: 0, inset: 0 };
+      if (result.history) history = result.history;
       displayBook(result.book, anchor);
+      historyDialog.close();
       viewport.focus();
     }
   } catch { showError('打开文件时发生错误，请重试。'); }
@@ -142,6 +152,58 @@ async function openBook() {
     buttons.forEach((button) => { button.disabled = false; });
     await save();
   }
+}
+
+function renderHistory() {
+  const list = element('history-list');
+  list.replaceChildren();
+  if (!history.length) {
+    const empty = document.createElement('p');
+    empty.className = 'history-empty';
+    empty.textContent = '还没有阅读记录，打开一本 TXT 试试。';
+    list.append(empty);
+  }
+  for (const entry of history) {
+    const row = document.createElement('div');
+    row.className = 'history-row';
+    const open = document.createElement('button');
+    open.className = 'history-book';
+    open.title = entry.file;
+    open.setAttribute('aria-label', `继续阅读 ${entry.name}`);
+    const name = document.createElement('span');
+    name.className = 'history-name';
+    name.textContent = entry.name;
+    const location = document.createElement('span');
+    location.className = 'history-path';
+    location.textContent = entry.file;
+    const meta = document.createElement('span');
+    meta.className = 'history-meta';
+    const date = entry.lastOpened ? new Date(entry.lastOpened).toLocaleString('zh-CN') : '此前阅读';
+    meta.textContent = `已读 ${entry.progress.toFixed(1)}% · ${date}${book?.path === entry.file ? ' · 正在阅读' : ''}`;
+    open.append(name, location, meta);
+    open.addEventListener('click', () => void openBook(entry.file));
+    const remove = document.createElement('button');
+    remove.className = 'history-delete';
+    remove.textContent = '删除记录';
+    remove.setAttribute('aria-label', `删除记录 ${entry.name}`);
+    remove.addEventListener('click', () => void removeHistory(entry.file));
+    row.append(open, remove);
+    list.append(row);
+  }
+}
+
+async function removeHistory(file: string) {
+  if (opening || !ready) return;
+  opening = true;
+  try {
+    await save(true);
+    const result = await window.reader.removeRecent(file);
+    if (result.error) { element('history-message').textContent = result.error; return; }
+    history = result.history ?? history;
+    renderHistory();
+    element('history-message').textContent = '已删除阅读记录，原始 TXT 文件仍保留。';
+  } catch { element('history-message').textContent = '删除记录失败，请重试。'; }
+  finally { opening = false; }
 }
 
 function changeFont(delta: number) {
@@ -156,6 +218,15 @@ function changeFont(delta: number) {
 
 element('open').addEventListener('click', () => void openBook());
 element('welcome-open').addEventListener('click', () => void openBook());
+element('history-open').addEventListener('click', () => {
+  if (!ready || opening) return;
+  void save().then(() => {
+    element('history-message').textContent = '';
+    renderHistory();
+    historyDialog.showModal();
+  });
+});
+element('history-close').addEventListener('click', () => historyDialog.close());
 element('dismiss').addEventListener('click', () => { notice.hidden = true; });
 smaller.addEventListener('click', () => changeFont(-2));
 larger.addEventListener('click', () => changeFont(2));
@@ -194,6 +265,7 @@ async function initialize() {
     element('startup-help').hidden = true;
     element('app').hidden = false;
     state = { ...initial.state, file: null };
+    history = initial.history;
     updateFont();
     if (initial.result.book) displayBook(initial.result.book, initial.state.anchor);
     if (initial.result.error || initial.warning) showError(initial.result.error || initial.warning!);
